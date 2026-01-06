@@ -24,8 +24,8 @@
 
         // Colunas
         data.addColumn('string', 'Name_Chart');
-        data.addColumn('number', 'M+I (%)');
-        data.addColumn('number', 'P+P / M+I (%)');
+        data.addColumn('number', 'Measured + Indicated (%)');
+        data.addColumn('number', 'Proved + Probable / Measured + Indicated (%)');
 
         for (let i = 1; i < rows.length; i++) {
           let r = rows[i].split(',').map(c => c.replace(/"/g, '').trim());
@@ -50,10 +50,10 @@
             color: '#000'
           },
           hAxis: {
-            title: 'M+I (%)'
+            title: 'Measured + Indicated (%)'
           },
           vAxis: {
-            title: 'P+P / M+I (%)',
+            title: 'Proved + Probable / M+I (%)',
             minValue: 0,
             maxValue: 1
           },
@@ -75,3 +75,4 @@
   </body>
 
 </html>
+

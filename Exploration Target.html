@@ -20,25 +20,27 @@
 
       const data = new google.visualization.DataTable();
 
-      // Eixo X
-      data.addColumn('number', 'Measured + Indicated');
-
-      // Séries
-      data.addColumn('number', 'Measured + Indicated');
+      // 🔹 Eixo X (numérico)
       data.addColumn('number', 'P+P / M+I');
 
-      // Tooltip HTML
+      // 🔵 Série azul (Measured + Indicated no eixo Y)
+      data.addColumn('number', 'Measured + Indicated');
+
+      // 🔴 Série vermelha (P+P / M+I no eixo X)
+      data.addColumn('number', 'P+P / M+I');
+
+      // Tooltip informativo
       data.addColumn({ type: 'string', role: 'tooltip', p: { html: true } });
 
-      // Link (usado no clique)
+      // Link para clique
       data.addColumn({ type: 'string', role: 'annotationText' });
 
       rows.forEach(r => {
         const c = r.split(',').map(v => v.replace(/"/g, '').trim());
 
         const name = c[0];
-        const mi = parseFloat(c[1]); // 0–1
-        const pp = parseFloat(c[2]); // 0–1
+        const mi = parseFloat(c[1]);   // 0–1
+        const pp = parseFloat(c[2]);   // 0–1
         const resources = c[3];
         const ore = c[4];
         const link = c[5];
@@ -46,20 +48,22 @@
         if (isNaN(mi)) return;
 
         const tooltip = `
-          <div style="padding:8px">
+          <div style="padding:8px; max-width:230px">
             <b>${name}</b><br>
-            Measured + Indicated: ${(mi * 100).toFixed(1)}%<br>
-            P+P / M+I: ${isNaN(pp) ? 'N/A' : (pp * 100).toFixed(1) + '%'}<br>
+            Measured + Indicated: ${mi}<br>
+            P+P / M+I: ${isNaN(pp) ? 'N/A' : pp}<br>
             Resources: ${resources} Mt<br>
-            Ore Type: ${ore}<br>
-            <span style="color:#1a73e8">Click to open source</span>
+            Ore type: ${ore}<br>
+            <span style="color:#1a73e8; font-size:11px">
+              Click point to open source
+            </span>
           </div>
         `;
 
         data.addRow([
-          mi,
-          mi,
-          isNaN(pp) ? null : pp,
+          pp,                     // X
+          mi,                     // Y azul
+          isNaN(pp) ? null : pp,  // série vermelha
           tooltip,
           link
         ]);
@@ -72,17 +76,15 @@
         tooltip: { isHtml: true },
 
         hAxis: {
-          title: 'Measured + Indicated (%)',
+          title: 'P+P / M+I (0–1)',
           minValue: 0,
-          maxValue: 1,
-          format: 'percent'
+          maxValue: 1
         },
 
         vAxis: {
-          title: 'P+P / M+I (%)',
+          title: 'Measured + Indicated (0–1)',
           minValue: 0,
-          maxValue: 1,
-          format: 'percent'
+          maxValue: 1
         },
 
         series: {
@@ -95,10 +97,11 @@
         document.getElementById('chart')
       );
 
-      // Clique funcional
+      // Clique funcional (independente do tooltip)
       google.visualization.events.addListener(chart, 'select', () => {
         const sel = chart.getSelection();
         if (!sel.length) return;
+
         const link = data.getValue(sel[0].row, 4);
         if (link) window.open(link, '_blank');
       });

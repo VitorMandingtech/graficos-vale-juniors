@@ -3,13 +3,17 @@
   <head>
     <meta charset="utf-8" />
     <title>Exploration Target</title>
+
     <script src="https://www.gstatic.com/charts/loader.js"></script>
+
     <script>
       google.charts.load('current', { packages: ['corechart'] });
       google.charts.setOnLoadCallback(draw);
 
       async function draw() {
-        const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSHkysTN6roFag5cFJv97rmXIsO9vKLKaAXmJxbeAD0v4klws329T8nwBI1ftUFKvrukkvLYM9vPysK/pub?gid=1283363545&single=true&output=csv';
+        const csvUrl =
+          'https://docs.google.com/spreadsheets/d/e/2PACX-1vSHkysTN6roFag5cFJv97rmXIsO9vKLKaAXmJxbeAD0v4klws329T8nwBI1ftUFKvrukkvLYM9vPysK/pub?gid=1283363545&single=true&output=csv';
+
         const res = await fetch(csvUrl);
         const csv = await res.text();
 
@@ -20,38 +24,65 @@
 
         const data = new google.visualization.DataTable();
 
-        // Colunas: Nome, X, Y
+        // Colunas principais
         data.addColumn('string', 'Name_Chart');
         data.addColumn('number', 'Measured + Indicated (%)');
         data.addColumn('number', 'Proved + Probable / Measured + Indicated (%)');
 
-        for (let i = 1; i < rows.length; i++) {
-          let r = rows[i].split(',').map(c => c.replace(/"/g, '').trim());
+        // Coluna de tooltip (HTML)
+        data.addColumn({
+          type: 'string',
+          role: 'tooltip',
+          p: { html: true }
+        });
 
-          if (r.length < 3) continue;
+        for (let i = 1; i < rows.length; i++) {
+          const r = rows[i]
+            .split(',')
+            .map(c => c.replace(/"/g, '').trim());
+
+          // Agora precisamos de pelo menos 6 colunas
+          if (r.length < 6) continue;
 
           const name = r[0];
-          const x = parseFloat(r[1].replace('%',''));
-          const y = parseFloat(r[2].replace('%',''));
+          const x = parseFloat(r[1].replace('%', ''));
+          const y = parseFloat(r[2].replace('%', ''));
+          const resources = r[3]; // Resources (Mt)
+          const oreType = r[4];   // Ore Type
+          const source = r[5];    // Source (link)
 
           if (!isNaN(x) && !isNaN(y)) {
-            data.addRow([name, x, y]);
+            const tooltip = `
+              <div style="padding:10px; min-width:240px;">
+                <strong>Deposit:</strong> ${name}<br>
+                <strong>M+I (%):</strong> ${x}<br>
+                <strong>P+P / M+I (%):</strong> ${y}<br>
+                <strong>Resources (Mt):</strong> ${resources}<br>
+                <strong>Ore type:</strong> ${oreType}<br>
+                <a href="${source}" target="_blank">Source</a>
+              </div>
+            `;
+
+            data.addRow([name, x, y, tooltip]);
           }
         }
 
         const options = {
           title: 'Exploration Target',
           titlePosition: 'center',
-          titleTextstyle: {
-            fontsize: 18,
+          titleTextStyle: {
+            fontSize: 18,
             bold: true,
             color: '#000'
           },
           hAxis: { title: 'Measured + Indicated (%)' },
-          vAxis: { title: 'Proved + Probable / Measured + Indicated (%)' },
+          vAxis: {
+            title: 'Proved + Probable / Measured + Indicated (%)'
+          },
           height: 500,
-          pointSize: 10, // tamanho fixo das bolhas
-          tooltip: { isHtml: true }
+          pointSize: 10,
+          tooltip: { isHtml: true },
+          legend: 'none'
         };
 
         const chart = new google.visualization.ScatterChart(
@@ -61,10 +92,12 @@
       }
     </script>
   </head>
-  <body>
-    <div id="chart"></div>
-  </body>
 
+  <body>
+    <div style="width:100%; max-width:1200px; margin:40px auto;">
+      <div id="chart" style="width:100%; height:500px;"></div>
+    </div>
+  </body>
 </html>
 
 

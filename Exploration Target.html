@@ -27,7 +27,7 @@
         // Mantém exatamente sua lógica original
         data.addColumn('string', 'Name_Chart');
         data.addColumn('number', 'Measured + Indicated (%)');
-        data.addColumn('number', 'P+P / M+I');
+        data.addColumn('number', 'Proved + Probable / Measured + Indicated (%)');
         data.addColumn({ type: 'string', role: 'tooltip', p: { html: true } });
 
         const links = [];
@@ -105,4 +105,5 @@
     <div id="chart"></div>
   </body>
 </html>
+
 

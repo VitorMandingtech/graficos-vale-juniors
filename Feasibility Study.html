@@ -75,7 +75,7 @@ body {
   z-index: 1;
 }
 
-/* TOOLTIP CUSTOMIZADO (Bubble) */
+/* TOOLTIP CUSTOMIZADO */
 #customTooltip {
   position: absolute;
   background: #ffffff;
@@ -94,7 +94,7 @@ body {
 /* LEGENDA SIMPLES DO TAMANHO */
 .size-legend {
   margin-top: 6px;
-  margin-left: 80px; /* MESMO valor do chartArea.left */
+  margin-left: 80px;
   font-size: 15px;
   color: #000;
   text-align: left;
@@ -136,17 +136,15 @@ function cap(s) {
 
 /* ================= SCATTER ================= */
 async function drawScatter() {
-  const url =
-    'https://docs.google.com/spreadsheets/d/e/2PACX-1vSHkysTN6roFag5cFJv97rmXIsO9vKLKaAXmJxbeAD0v4klws329T8nwBI1ftUFKvrukkvLYM9vPysK/pub?gid=1894723608&single=true&output=csv';
-
+  const url = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSHkysTN6roFag5cFJv97rmXIsO9vKLKaAXmJxbeAD0v4klws329T8nwBI1ftUFKvrukkvLYM9vPysK/pub?gid=1894723608&single=true&output=csv';
   const csv = await (await fetch(url)).text();
   const rows = csv.trim().split('\n').slice(1);
 
   const data = new google.visualization.DataTable();
-  data.addColumn('string', 'Name');
-  data.addColumn('number', 'Measured + Indicated');
-  data.addColumn('number', 'P+P / M+I');
-  data.addColumn({ type:'string', role:'tooltip', p:{html:true} });
+  data.addColumn('string', 'Name');               // X axis categories
+  data.addColumn('number', 'Measured + Indicated'); // Y axis
+  data.addColumn('number', 'P+P / M+I');          // Bubble size (optional)
+  data.addColumn({ type:'string', role:'tooltip', p:{html:true} }); // placeholder
 
   const links = [];
 
@@ -156,47 +154,63 @@ async function drawScatter() {
     const ratio = parseFloat(c[2]);
     if (isNaN(mi) || isNaN(ratio)) return;
 
-    data.addRow([
-      c[0],
-      mi,
-      ratio,
-      `<strong>${c[0]}</strong><br><br>
-       <b>Measured + Indicated:</b> ${mi}<br>
-       <b>P+P / M+I:</b> ${ratio}`
-    ]);
+    data.addRow([c[0], mi, ratio, '']);
     links.push(c[5]);
   });
 
-  const chart = new google.visualization.ScatterChart(
-    document.getElementById('scatter')
-  );
+  const chartDiv = document.getElementById('scatter');
+  const tooltip = document.getElementById('customTooltip');
+  const chart = new google.visualization.ScatterChart(chartDiv);
 
-  google.visualization.events.addListener(chart,'select',()=>{
+  // Tooltip customizado
+  google.visualization.events.addListener(chart,'onmouseover', e => {
+    if(e.row == null) return;
+
+    const cli = chart.getChartLayoutInterface();
+    const x = cli.getXLocation(data.getValue(e.row,1));
+    const y = cli.getYLocation(data.getValue(e.row,2));
+
+    // Pega Ore Type e Resources do CSV
+    const c = rows[e.row].split(',').map(x => x.replace(/"/g,'').trim());
+    const oreType = c[4];
+    const resources = c[3];
+
+    tooltip.innerHTML = `
+      <strong>${data.getValue(e.row,0)}</strong><br><br>
+      <b>Measured + Indicated:</b> ${data.getValue(e.row,1)}<br>
+      <b>P+P / M+I:</b> ${data.getValue(e.row,2)}<br>
+      <b>Ore Type:</b> ${oreType}<br>
+      <b>Resources (Mt):</b> ${resources}<br>
+      <span style="color:#0066cc">Click to open source</span>
+    `;
+    tooltip.style.left = chartDiv.offsetLeft + x + 15 + 'px';
+    tooltip.style.top  = chartDiv.offsetTop + y - 10 + 'px';
+    tooltip.style.display = 'block';
+  });
+
+  google.visualization.events.addListener(chart,'onmouseout', () => {
+    tooltip.style.display = 'none';
+  });
+
+  google.visualization.events.addListener(chart,'select', () => {
     const s = chart.getSelection();
-    if (s.length) window.open(links[s[0].row], '_blank');
+    if(s.length) window.open(links[s[0].row],'_blank');
   });
 
   chart.draw(data,{
-    hAxis:{ title:'Measured + Indicated (%)', minValue:-0.1 },
+    hAxis:{ title:'Measured + Indicated (%)' },
     vAxis:{ title:'P+P / M+I (%)' },
-    tooltip:{ isHtml:true },
+    tooltip:{ trigger:'none' }, // desativa tooltip padrão
     height:480,
+    pointSize: 8,
     backgroundColor:'transparent',
-    chartArea: {
-      top: 30,
-      left: 95,
-      right: 230,
-      bottom: 120,
-      backgroundColor: 'transparent'
-    }
+    chartArea: { top:30, left:95, right:230, bottom:120, backgroundColor:'transparent' }
   });
 }
 
 /* ================= BUBBLE ================= */
 async function drawBubble() {
-  const url =
-    'https://docs.google.com/spreadsheets/d/e/2PACX-1vSHkysTN6roFag5cFJv97rmXIsO9vKLKaAXmJxbeAD0v4klws329T8nwBI1ftUFKvrukkvLYM9vPysK/pub?gid=1894723608&single=true&output=csv';
-
+  const url = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSHkysTN6roFag5cFJv97rmXIsO9vKLKaAXmJxbeAD0v4klws329T8nwBI1ftUFKvrukkvLYM9vPysK/pub?gid=1894723608&single=true&output=csv';
   const csv = await (await fetch(url)).text();
   const rows = csv.trim().split('\n').slice(1);
 
@@ -215,18 +229,15 @@ async function drawBubble() {
     const ratio = parseFloat(c[2]);
     const resources = parseFloat(c[3].replace(/\D/g,''));
     if (isNaN(mi)||isNaN(ratio)||isNaN(resources)) return;
-
     data.addRow(['', mi, ratio, c[4], resources, c[0], c[5]]);
   });
 
   const chartDiv = document.getElementById('bubble');
   const tooltip = document.getElementById('customTooltip');
-
   const chart = new google.visualization.BubbleChart(chartDiv);
 
-  google.visualization.events.addListener(chart,'onmouseover',e=>{
+  google.visualization.events.addListener(chart,'onmouseover', e => {
     if (e.row == null) return;
-
     const cli = chart.getChartLayoutInterface();
     const x = cli.getXLocation(data.getValue(e.row,1));
     const y = cli.getYLocation(data.getValue(e.row,2));
@@ -239,19 +250,18 @@ async function drawBubble() {
       <b>Resources (Mt):</b> ${data.getValue(e.row,4)}<br>
       <span style="color:#0066cc">Click to open source</span>
     `;
-
     tooltip.style.left = chartDiv.offsetLeft + x + 15 + 'px';
-    tooltip.style.top  = chartDiv.offsetTop  + y - 10 + 'px';
+    tooltip.style.top  = chartDiv.offsetTop + y - 10 + 'px';
     tooltip.style.display = 'block';
   });
 
-  google.visualization.events.addListener(chart,'onmouseout',()=>{
+  google.visualization.events.addListener(chart,'onmouseout', () => {
     tooltip.style.display = 'none';
   });
 
-  google.visualization.events.addListener(chart,'select',()=>{
+  google.visualization.events.addListener(chart,'select', () => {
     const s = chart.getSelection();
-    if (s.length) window.open(data.getValue(s[0].row,6),'_blank');
+    if(s.length) window.open(data.getValue(s[0].row,6),'_blank');
   });
 
   chart.draw(data,{
@@ -262,13 +272,7 @@ async function drawBubble() {
     tooltip:{ trigger:'none' },
     height:420,
     backgroundColor:'transparent',
-    chartArea: {
-      top: 30,
-      left: 95,
-      right: 230,
-      bottom: 60,
-      backgroundColor: 'transparent'
-    }
+    chartArea: { top:30, left:95, right:230, bottom:60, backgroundColor:'transparent' }
   });
 }
 </script>
@@ -276,7 +280,6 @@ async function drawBubble() {
 
 <body>
 
-<!-- ===== TÍTULO ===== -->
 <h1 class="page-title">Feasibility Study</h1>
 
 <div class="chart-menu">
@@ -290,8 +293,6 @@ async function drawBubble() {
 
 <div id="bubbleBox" class="chart-box chart-bg">
   <div id="bubble"></div>
-
-  <!-- LEGENDA SIMPLES -->
   <div class="size-legend">
     Bubble size = Resources (Mt)
   </div>
@@ -301,5 +302,4 @@ async function drawBubble() {
 
 </body>
 </html>
-
 
